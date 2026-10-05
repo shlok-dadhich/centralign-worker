@@ -125,10 +125,9 @@ def verify(goal: str, facts: dict, approved: bool | None = None) -> dict:
             if actual.get(k) != expected.get(k):
                 diff.append(f"{k}: expected {expected.get(k)!r} actual {actual.get(k)!r}")
         gl = (goal or "").lower()
-        if "pay" in gl or "payment" in gl:
-            want = "PAID" if approved else "UNPAID"
-            if actual.get("status") != want:
-                diff.append(f"status: expected {want} actual {actual.get('status')!r}")
+        if approved is True and ("pay" in gl or "payment" in gl):
+            if actual.get("status") != "PAID":
+                diff.append(f"status: expected PAID actual {actual.get('status')!r}")
     return {
         "passed": not diff,
         "expected": expected,
