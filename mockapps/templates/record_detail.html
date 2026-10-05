@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Record {{ row.id }}{% endblock %}
+{% block body %}
+<p><a href="/records">Back to records</a></p>
+<h1>Record detail</h1>
+<p>Record ID: {{ row.id }}</p>
+<p>Vendor: {{ row.vendor }}</p>
+<p>Invoice Number: {{ row.invoice_number }}</p>
+<p>Amount: {{ format_inr(row.amount) }}</p>
+<p>Due Date: {{ row.due_date }}</p>
+<p>Status: {{ row.status }}</p>
+<p><a href="/records/{{ row.id }}/edit">Edit this record</a></p>
+{% if row.status != 'PAID' %}
+<p><a href="/records/{{ row.id }}/pay">Pay this record</a></p>
+{% endif %}
+{% endblock %}

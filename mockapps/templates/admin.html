@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block body %}
+<h1>Finance admin</h1>
+<p>fail_first_save={{ flags.get('fail_first_save') }} · rename_button={{ flags.get('rename_button') }} · fail_first_save_used={{ flags.get('fail_first_save_used') }}</p>
+<form method="post" action="/admin/set?fail_first_save=1">
+  <button type="submit">Enable fail_first_save</button>
+</form>
+<form method="post" action="/admin/set?fail_first_save=0">
+  <button type="submit">Disable fail_first_save</button>
+</form>
+<form method="post" action="/admin/set?rename_button=1">
+  <button type="submit">Enable rename_button</button>
+</form>
+<form method="post" action="/admin/set?rename_button=0">
+  <button type="submit">Disable rename_button</button>
+</form>
+<form method="post" action="/admin/reset">
+  <button type="submit">Reset (wipe records)</button>
+</form>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Edit record {{ row.id }}{% endblock %}
+{% block body %}
+<p><a href="/records/{{ row.id }}">Back to record</a></p>
+<h1>Edit finance record</h1>
+{% if error %}<p role="alert" class="error-banner">{{ error }}</p>{% endif %}
+<form method="post" action="/records/{{ row.id }}/edit">
+  <label>Vendor <input type="text" name="vendor" value="{{ row.vendor }}"></label>
+  <label>Invoice Number <input type="text" name="invoice_number" value="{{ row.invoice_number }}"></label>
+  <label>Amount <input type="text" name="amount" value="{{ row.amount }}"></label>
+  <label>Due Date <input type="text" name="due_date" value="{{ row.due_date }}"></label>
+  <button type="submit">Update Record</button>
+</form>
+{% endblock %}

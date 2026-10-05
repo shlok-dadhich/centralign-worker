@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}App{% endblock %}</title>
+<style>
+  :root {
+    --ink: #10182b;
+    --muted: #5b6b8c;
+    --line: #dbe3f0;
+    --brand: #2563eb;
+    --bg: #eef2f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    margin: 0;
+    color: var(--ink);
+    background: var(--bg);
+    min-height: 100vh;
+  }
+  /* Non-interactive header: contains no links/buttons/inputs so the agent's
+     observation is unaffected. */
+  .topbar {
+    background: linear-gradient(120deg, #0f172a, #1e293b);
+    color: #eaf0fb;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.25);
+  }
+  .topbar .mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, #60a5fa, #34d399);
+    display: grid; place-items: center; font-weight: 800; color: #06121f;
+  }
+  .topbar .name { font-weight: 700; letter-spacing: 0.2px; }
+  .topbar .env { margin-left: auto; font-size: 0.74rem; letter-spacing: 0.12em; text-transform: uppercase; color: #9fb3d1; }
+  .wrap { max-width: 820px; margin: 26px auto 60px; padding: 0 22px; }
+  .card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 26px 28px;
+    box-shadow: 0 12px 30px rgba(23, 37, 84, 0.08);
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 18px; letter-spacing: -0.01em; }
+  form { margin: 0; }
+  label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-bottom: 14px; }
+  input[type=text], input[type=password], input[type=email] {
+    display: block; margin-top: 6px; width: 100%; max-width: 24rem;
+    padding: 9px 11px; font-size: 0.95rem; font-family: inherit;
+    border: 1px solid var(--line); border-radius: 9px; background: #fbfcfe; color: var(--ink);
+    outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.13); }
+  button {
+    margin-top: 6px; padding: 10px 18px; font-size: 0.92rem; font-weight: 700;
+    font-family: inherit; color: #fff; background: var(--brand); border: none;
+    border-radius: 9px; cursor: pointer; transition: transform 0.12s ease, background 0.12s ease;
+  }
+  button:hover { transform: translateY(-1px); background: #1d4ed8; }
+  .error-banner {
+    color: #b42318; background: #fef3f2; border: 1px solid #fecdca;
+    border-left: 4px solid #d92d20; padding: 12px 14px; margin-bottom: 18px;
+    border-radius: 9px; font-size: 0.9rem; font-weight: 600;
+  }
+  table { border-collapse: collapse; width: 100%; margin-top: 6px; font-size: 0.92rem; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+  th { font-size: 0.74rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); background: #f7f9fc; }
+  tbody tr:hover, tr:hover td { background: #f6f9ff; }
+  a { color: var(--brand); text-decoration: none; font-weight: 600; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="mark">C</span>
+    <span class="name">CentrAlign Sandbox</span>
+    <span class="env">{% block appenv %}Mock environment{% endblock %}</span>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      {% if error %}<div class="error-banner" role="alert">{{ error }}</div>{% endif %}
+      {% block body %}{% endblock %}
+    </div>
+  </div>
+</body>
+</html>

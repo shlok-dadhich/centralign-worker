@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Approve payment{% endblock %}
+{% block body %}
+<p><a href="/records/{{ row.id }}">Back to record</a></p>
+<h1>Approve payment</h1>
+<p>This action is simulated and irreversible. It sets status to PAID.</p>
+<p>Vendor: {{ row.vendor }} · Invoice Number: {{ row.invoice_number }} · Amount: {{ format_inr(row.amount) }}</p>
+<form method="post" action="/records/{{ row.id }}/pay">
+  <button type="submit">Approve Payment</button>
+</form>
+{% endblock %}

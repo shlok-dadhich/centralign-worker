@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Records{% endblock %}
+{% block body %}
+<h1>Finance records</h1>
+<p><a href="/records/new">New record</a> · <a href="/admin">Admin</a></p>
+<table>
+  <tr><th>ID</th><th>Vendor</th><th>Invoice Number</th><th>Amount</th><th>Status</th></tr>
+  {% for row in rows %}
+  <tr>
+    <td><a href="/records/{{ row.id }}">{{ row.id }}</a></td>
+    <td>{{ row.vendor }}</td>
+    <td>{{ row.invoice_number }}</td>
+    <td>{{ format_inr(row.amount) }}</td>
+    <td>{{ row.status }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

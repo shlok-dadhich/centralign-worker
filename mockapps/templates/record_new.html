@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}New record{% endblock %}
+{% block body %}
+<p><a href="/records">Back to records</a></p>
+<h1>New finance record</h1>
+<form method="post" action="/records">
+  <label>Vendor <input type="text" name="vendor" value="{{ vendor|default('') }}"></label>
+  <label>Invoice Number <input type="text" name="invoice_number" value="{{ invoice_number|default('') }}"></label>
+  <label>Amount <input type="text" name="amount" value="{{ amount|default('') }}"></label>
+  <label>Due Date <input type="text" name="due_date" value="{{ due_date|default('') }}"></label>
+  <button type="submit">{{ submit_label }}</button>
+</form>
+{% endblock %}

@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CentrAlign Worker — Autonomous Browser Agent</title>
+  <meta name="description" content="Give a task in plain English. CentrAlign Worker drives a real browser, asks for approval on risky steps, and independently verifies the result." />
+  <style>
+    :root {
+      --bg: #070b16;
+      --bg-2: #0c1426;
+      --panel: rgba(17, 27, 48, 0.72);
+      --panel-solid: #111b30;
+      --line: #243450;
+      --line-soft: rgba(120, 150, 200, 0.14);
+      --text: #eef4ff;
+      --muted: #9fb2d4;
+      --dim: #6f83a8;
+      --accent: #5cc8ff;
+      --accent-2: #7ef0c0;
+      --warn: #ffcc66;
+      --danger: #ff7a8a;
+      --ok: #55e6a5;
+      --shadow: 0 30px 70px rgba(2, 8, 22, 0.55);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(1100px 520px at 12% -6%, rgba(92, 200, 255, 0.16), transparent 60%),
+        radial-gradient(900px 480px at 92% 2%, rgba(126, 240, 192, 0.12), transparent 55%),
+        linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 55%, #05080f 100%);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ---------- Top navigation ---------- */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      backdrop-filter: blur(12px);
+      background: rgba(7, 11, 22, 0.72);
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .nav-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 13px 22px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 0.2px; }
+    .logo {
+      width: 30px; height: 30px; border-radius: 9px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: grid; place-items: center; color: #06121f; font-size: 16px; font-weight: 900;
+      box-shadow: 0 6px 18px rgba(92, 200, 255, 0.35);
+    }
+    .brand small { display: block; font-weight: 500; color: var(--dim); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; }
+    .nav-links { margin-left: auto; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .nav-links a {
+      color: var(--muted); font-size: 0.85rem; padding: 7px 11px; border-radius: 9px;
+      border: 1px solid transparent;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.05); border-color: var(--line-soft); text-decoration: none; }
+
+    /* ---------- Hero ---------- */
+    .hero { max-width: 1180px; margin: 0 auto; padding: 60px 22px 26px; text-align: center; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.74rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-2);
+      border: 1px solid rgba(126,240,192,0.25); background: rgba(126,240,192,0.07);
+      padding: 6px 13px; border-radius: 999px;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+    .hero h1 {
+      font-size: clamp(2rem, 4.6vw, 3.35rem);
+      line-height: 1.08; margin: 20px 0 12px; letter-spacing: -0.02em;
+    }
+    .hero h1 .grad { background: linear-gradient(100deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero p.lead { max-width: 660px; margin: 0 auto; color: var(--muted); font-size: 1.05rem; line-height: 1.6; }
+    .hero-stats { display: flex; gap: 26px; justify-content: center; margin-top: 26px; flex-wrap: wrap; }
+    .hero-stats div { text-align: center; }
+    .hero-stats b { display: block; font-size: 1.35rem; }
+    .hero-stats span { color: var(--dim); font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
+
+    /* ---------- Console ---------- */
+    .console { max-width: 1180px; margin: 8px auto 0; padding: 24px 22px 40px; }
+    .grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 20px; align-items: start; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      backdrop-filter: blur(10px);
+    }
+    .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .card-head h2 { font-size: 1rem; margin: 0; letter-spacing: 0.01em; }
+    .card-head .hint { margin-left: auto; color: var(--dim); font-size: 0.76rem; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 12px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      background: rgba(92,200,255,0.1); color: var(--accent); border: 1px solid rgba(92,200,255,0.28);
+    }
+    .pill.running { background: rgba(255,204,102,0.1); color: var(--warn); border-color: rgba(255,204,102,0.3); }
+    .pill.done { background: rgba(85,230,165,0.1); color: var(--ok); border-color: rgba(85,230,165,0.3); }
+    .pill.failed { background: rgba(255,122,138,0.1); color: var(--danger); border-color: rgba(255,122,138,0.3); }
+
+    textarea {
+      width: 100%; min-height: 118px; resize: vertical;
+      border: 1px solid var(--line); border-radius: 13px;
+      background: rgba(6, 10, 20, 0.75); color: var(--text);
+      padding: 14px 15px; font-size: 0.98rem; line-height: 1.5; font-family: inherit;
+      outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(92,200,255,0.14); }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .chip {
+      font-size: 0.78rem; color: var(--muted); cursor: pointer;
+      border: 1px solid var(--line-soft); background: rgba(255,255,255,0.03);
+      padding: 6px 11px; border-radius: 999px; transition: all 0.15s ease;
+    }
+    .chip:hover { color: var(--text); border-color: var(--accent); background: rgba(92,200,255,0.08); }
+    .actions { display: flex; gap: 11px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+    button {
+      border: none; border-radius: 11px; padding: 11px 18px; font-weight: 700;
+      font-size: 0.9rem; cursor: pointer; font-family: inherit;
+      transition: transform 0.14s ease, opacity 0.14s ease, box-shadow 0.14s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    #run { background: linear-gradient(135deg, var(--accent), #9ad4ff); color: #06121f; box-shadow: 0 10px 24px rgba(92,200,255,0.28); }
+    .ghost { background: rgba(255,255,255,0.04); color: var(--text); border: 1px solid var(--line); }
+    .approve { background: linear-gradient(135deg, var(--ok), #9df0c8); color: #05231a; }
+    .reject { background: rgba(255,122,138,0.14); color: var(--danger); border: 1px solid rgba(255,122,138,0.35); }
+
+    /* ---------- Result ---------- */
+    .result-card {
+      margin-top: 18px; border: 1px solid var(--line); border-radius: 13px; overflow: hidden;
+      background: rgba(6, 10, 20, 0.75);
+    }
+    .result-head {
+      display: flex; align-items: center; gap: 9px; padding: 11px 14px;
+      border-bottom: 1px solid var(--line-soft); font-size: 0.82rem; font-weight: 700;
+      color: var(--muted); letter-spacing: 0.02em;
+    }
+    .result-body {
+      padding: 13px 14px; color: var(--text); font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.79rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+      max-height: 300px; overflow: auto;
+    }
+    .tag { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; }
+    .tag.ok { color: var(--ok); background: rgba(85,230,165,0.12); }
+    .tag.bad { color: var(--danger); background: rgba(255,122,138,0.12); }
+    .tag.idle { color: var(--dim); background: rgba(120,150,200,0.1); }
+
+    /* ---------- Facts + feed ---------- */
+    .facts {
+      margin: 0; min-height: 96px; padding: 12px; border-radius: 12px;
+      background: rgba(6,10,20,0.75); border: 1px solid var(--line-soft);
+      color: var(--accent-2); font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.79rem; white-space: pre-wrap; word-break: break-word;
+    }
+    .empty { color: var(--dim); font-size: 0.82rem; }
+    .feed {
+      height: 340px; overflow: auto; margin-top: 12px; padding: 8px;
+      background: rgba(6,10,20,0.75); border: 1px solid var(--line-soft); border-radius: 12px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .ev {
+      display: grid; grid-template-columns: 84px 1fr; gap: 9px; align-items: baseline;
+      font-family: "JetBrains Mono", Consolas, monospace; font-size: 0.75rem;
+      padding: 6px 8px; border-radius: 8px; border-left: 2px solid transparent;
+    }
+    .ev .t { color: var(--dim); }
+    .ev .m { color: var(--muted); word-break: break-word; }
+    .ev.ok { border-left-color: var(--ok); }
+    .ev.warn { border-left-color: var(--warn); }
+    .ev.bad { border-left-color: var(--danger); }
+    .ev.info { border-left-color: var(--accent); }
+    .ev .m b { color: var(--text); font-weight: 700; }
+
+    /* ---------- Modal ---------- */
+    .overlay {
+      position: fixed; inset: 0; z-index: 60; display: none;
+      place-items: center; padding: 20px;
+      background: rgba(4, 8, 18, 0.7); backdrop-filter: blur(4px);
+    }
+    .overlay.show { display: grid; }
+    .modal {
+      width: min(520px, 100%); background: var(--panel-solid);
+      border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 22px;
+    }
+    .modal h3 { margin: 0 0 6px; font-size: 1.05rem; }
+    .modal p { margin: 0 0 14px; color: var(--muted); line-height: 1.55; font-size: 0.92rem; }
+    .modal input {
+      width: 100%; border: 1px solid var(--line); border-radius: 11px;
+      background: rgba(6,10,20,0.8); color: var(--text); padding: 11px 13px;
+      font-family: inherit; font-size: 0.92rem; outline: none;
+    }
+    .modal input:focus { border-color: var(--accent); }
+    .modal-actions { display: flex; gap: 9px; margin-top: 15px; flex-wrap: wrap; }
+
+    /* ---------- Features / footer ---------- */
+    .section { max-width: 1180px; margin: 0 auto; padding: 36px 22px; }
+    .section h2 { text-align: center; font-size: 1.5rem; margin: 0 0 8px; }
+    .section p.sub { text-align: center; color: var(--muted); margin: 0 auto 26px; max-width: 560px; }
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .feature { background: var(--panel); border: 1px solid var(--line); border-radius: 15px; padding: 18px; }
+    .feature .ico { font-size: 1.3rem; }
+    .feature h4 { margin: 10px 0 6px; font-size: 0.98rem; }
+    .feature p { margin: 0; color: var(--muted); font-size: 0.86rem; line-height: 1.55; }
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; counter-reset: step; }
+    .step { position: relative; padding-left: 46px; }
+    .step::before {
+      counter-increment: step; content: counter(step);
+      position: absolute; left: 0; top: -2px; width: 32px; height: 32px; border-radius: 10px;
+      display: grid; place-items: center; font-weight: 800; color: #06121f;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    }
+    .step h4 { margin: 0 0 5px; font-size: 0.95rem; }
+    .step p { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
+    footer {
+      border-top: 1px solid var(--line-soft); margin-top: 10px;
+      padding: 22px; text-align: center; color: var(--dim); font-size: 0.82rem;
+    }
+    footer a { color: var(--muted); }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .features, .steps { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 560px) {
+      .features, .steps { grid-template-columns: 1fr; }
+      .hero { padding-top: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-inner">
+      <div class="brand">
+        <span class="logo">C</span>
+        <span>CentrAlign<small>AI Worker</small></span>
+      </div>
+      <div class="nav-links">
+        <a href="#console">Run a task</a>
+        <a href="#how">How it works</a>
+        <a href="http://127.0.0.1:3001" target="_blank" rel="noopener">Invoice Portal</a>
+        <a href="http://127.0.0.1:3002" target="_blank" rel="noopener">Finance System</a>
+        <a href="http://127.0.0.1:3002/admin" target="_blank" rel="noopener">Admin</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <span class="eyebrow"><span class="dot"></span> Autonomous · Verified · Human-approved</span>
+    <h1>An AI worker that <span class="grad">really operates</span> your browser</h1>
+    <p class="lead">
+      Describe a task in plain English. CentrAlign Worker plans it, drives a real Chromium browser
+      across your invoice and finance systems, asks for approval before money moves, and then
+      <strong>independently verifies</strong> the result against the database.
+    </p>
+    <div class="hero-stats">
+      <div><b>2</b><span>Mock apps</span></div>
+      <div><b>8</b><span>Typed tools</span></div>
+      <div><b>100%</b><span>Deterministic checks</span></div>
+      <div><b>Live</b><span>Event stream</span></div>
+    </div>
+  </header>
+
+  <main class="console" id="console">
+    <div class="grid">
+      <!-- Task console -->
+      <section class="card">
+        <div class="card-head">
+          <h2>Task console</h2>
+          <span class="pill" id="status">idle</span>
+          <span class="hint" id="runmeta"></span>
+        </div>
+
+        <textarea id="goal" spellcheck="false">Find the latest invoice from Acme Corp and enter it into the finance system.</textarea>
+        <div class="chips">
+          <span class="chip" data-goal="Find the latest invoice from Acme Corp and enter it into the finance system.">Acme happy path</span>
+          <span class="chip" data-goal="Find the latest invoice from Globex and enter it into the finance system.">Globex</span>
+          <span class="chip" data-goal="Find the latest Acme invoice and enter it into the finance system.">Ambiguous (asks you)</span>
+          <span class="chip" data-goal="Find the latest invoice from Acme Corp, enter it into the finance system, and pay it.">Pay (needs approval)</span>
+        </div>
+
+        <div class="actions">
+          <button id="run">▶ Run task</button>
+          <button id="reset" class="ghost">Reset</button>
+        </div>
+
+        <div class="result-card">
+          <div class="result-head">
+            <span>Final result</span>
+            <span class="tag idle" id="resulttag" style="margin-left:auto;">not run</span>
+          </div>
+          <div class="result-body" id="result">No result yet. Run a task to see the verified outcome.</div>
+        </div>
+      </section>
+
+      <!-- Facts + events -->
+      <section class="card">
+        <div class="card-head"><h2>Working memory</h2><span class="hint">facts extracted by the agent</span></div>
+        <pre class="facts" id="facts">{}</pre>
+
+        <div class="card-head" style="margin-top:18px;">
+          <h2>Live event stream</h2>
+          <span class="hint">plan · tools · retries · verification</span>
+        </div>
+        <div class="feed" id="feed"><div class="empty">Events will appear here when a task starts.</div></div>
+      </section>
+    </div>
+  </main>
+
+  <section class="section" id="how">
+    <h2>How it works</h2>
+    <p class="sub">One hand-written loop. Every risky action is gated, every claim is checked.</p>
+    <div class="steps">
+      <div class="step"><h4>Plan</h4><p>A single LLM call turns your sentence into a short, editable plan.</p></div>
+      <div class="step"><h4>Act</h4><p>The agent picks exactly one validated browser tool per turn and executes it in Python.</p></div>
+      <div class="step"><h4>Approve</h4><p>Financial or destructive clicks are blocked until you approve them here.</p></div>
+      <div class="step"><h4>Verify</h4><p>A deterministic, no-LLM check compares the saved record against ground truth.</p></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="features">
+      <div class="feature"><div class="ico">🧭</div><h4>Browser-native</h4><p>Real headed Chromium via Playwright. It reads the page like a person: labels, values, banners.</p></div>
+      <div class="feature"><div class="ico">🔒</div><h4>Policy in code</h4><p>Guardrails live in Python, not the prompt. The model cannot bypass an approval gate.</p></div>
+      <div class="feature"><div class="ico">✅</div><h4>Independent verifier</h4><p>"Finished" is only a claim. SQLite ground truth decides pass or fail — no LLM involved.</p></div>
+    </div>
+  </section>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h3 id="modaltitle">Action needed</h3>
+      <p id="modalq"></p>
+      <input id="modalin" placeholder="Type your answer…" style="display:none;" />
+      <div class="modal-actions">
+        <button id="okans" class="ghost" style="display:none;">Submit answer</button>
+        <button id="yes" class="approve" style="display:none;">Approve</button>
+        <button id="no" class="reject" style="display:none;">Reject</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    CentrAlign Worker · interview prototype · mock apps on
+    <a href="http://127.0.0.1:3001" target="_blank" rel="noopener">:3001</a> /
+    <a href="http://127.0.0.1:3002" target="_blank" rel="noopener">:3002</a>.
+    Start them with <code>python -m mockapps.run_apps</code>.
+  </footer>
+
+  <script>
+    let tid = null;
+    let es = null;
+    let polls = null;
+    const $ = (id) => document.getElementById(id);
+    const feed = $('feed');
+    const statusEl = $('status');
+    const factsEl = $('facts');
+    const resultEl = $('result');
+    const resultTag = $('resulttag');
+    const overlay = $('overlay');
+
+    const STATUS_CLASS = { RUNNING: 'running', COMPLETED: 'done', FAILED: 'failed', ESCALATED: 'failed' };
+    const EVENT_CLASS = {
+      TASK_COMPLETED: 'ok', VERIFICATION_PASSED: 'ok', VERIFICATION_FAILED: 'bad',
+      TOOL_FAILURE: 'bad', TASK_FAILED: 'bad', FAILURE_CLASSIFIED: 'warn',
+      RETRY: 'warn', APPROVAL_REQUESTED: 'warn', APPROVAL_RESOLVED: 'info',
+      PLAN_GENERATED: 'info', TOOL_CALL: 'info', ASK_USER: 'warn'
+    };
+
+    function setStatus(s) {
+      const v = (s || 'idle').toUpperCase();
+      statusEl.textContent = v.toLowerCase();
+      statusEl.className = 'pill ' + (STATUS_CLASS[v] || '');
+    }
+
+    function clearFeed() {
+      feed.innerHTML = '<div class="empty">Events will appear here when a task starts.</div>';
+    }
+
+    function eventLine(e) {
+      const cls = EVENT_CLASS[e.type] || 'info';
+      const detail = e.result_summary || e.tool || e.plan || e.reason || '';
+      const args = e.args ? ' ' + JSON.stringify(e.args) : '';
+      const div = document.createElement('div');
+      div.className = 'ev ' + cls;
+      const t = document.createElement('span');
+      t.className = 't';
+      t.textContent = (e.type || '').replace(/_/g, ' ').toLowerCase();
+      const m = document.createElement('span');
+      m.className = 'm';
+      const strong = document.createElement('b');
+      strong.textContent = e.tool ? e.tool + ' ' : '';
+      m.appendChild(strong);
+      m.appendChild(document.createTextNode(String(detail).slice(0, 220) + args));
+      div.appendChild(t);
+      div.appendChild(m);
+      return div;
+    }
+
+    function appendEvent(e) {
+      const empty = feed.querySelector('.empty');
+      if (empty) empty.remove();
+      feed.appendChild(eventLine(e));
+      feed.scrollTop = feed.scrollHeight;
+    }
+
+    async function pollState() {
+      if (!tid) return;
+      try {
+        const s = await fetch('/tasks/' + tid).then((r) => r.json());
+        setStatus(s.status);
+        factsEl.textContent = JSON.stringify(s.facts || {}, null, 2) || '{}';
+        if (s.done) {
+          const r = s.result || {};
+          resultEl.textContent = typeof r === 'string' ? r : JSON.stringify(r, null, 2);
+          const passed = r.status === 'COMPLETED';
+          resultTag.textContent = passed ? 'verified' : (r.status || 'done').toLowerCase();
+          resultTag.className = 'tag ' + (passed ? 'ok' : 'bad');
+          $('run').disabled = false;
+        }
+        if (s.approval) showApproval(s.approval);
+        if (s.ask) showQuestion(s.ask);
+      } catch (err) {
+        appendEvent({ type: 'STATE_ERROR', result_summary: String(err) });
+      }
+    }
+
+    function showApproval(a) {
+      $('modaltitle').textContent = 'Approval required';
+      $('modalq').textContent = 'The worker wants to: ' + a.action + '.\nReason: ' + a.reason;
+      $('modalq').style.whiteSpace = 'pre-wrap';
+      $('modalin').style.display = 'none';
+      $('okans').style.display = 'none';
+      $('yes').style.display = 'inline-block';
+      $('no').style.display = 'inline-block';
+      overlay.classList.add('show');
+    }
+
+    function showQuestion(q) {
+      $('modaltitle').textContent = 'The worker has a question';
+      $('modalq').textContent = q;
+      $('modalq').style.whiteSpace = 'pre-wrap';
+      $('modalin').style.display = 'block';
+      $('modalin').value = '';
+      $('okans').style.display = 'inline-block';
+      $('yes').style.display = 'none';
+      $('no').style.display = 'none';
+      overlay.classList.add('show');
+      setTimeout(() => $('modalin').focus(), 50);
+    }
+
+    function hideOverlay() { overlay.classList.remove('show'); }
+
+    document.querySelectorAll('.chip').forEach((c) => {
+      c.onclick = () => { $('goal').value = c.dataset.goal; };
+    });
+
+    $('run').onclick = async () => {
+      clearFeed();
+      resultEl.textContent = 'Running…';
+      resultTag.textContent = 'running';
+      resultTag.className = 'tag idle';
+      factsEl.textContent = '{}';
+      hideOverlay();
+      setStatus('running');
+      $('run').disabled = true;
+      $('runmeta').textContent = 'started ' + new Date().toLocaleTimeString();
+
+      const r = await fetch('/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal: $('goal').value })
+      });
+      const j = await r.json();
+      tid = j.id;
+      if (es) es.close();
+      es = new EventSource('/tasks/' + tid + '/events');
+      es.onmessage = (ev) => {
+        const e = JSON.parse(ev.data);
+        appendEvent(e);
+        pollState();
+        if (e.type === 'TASK_DONE' || e.type === 'TASK_FAILED') { es.close(); pollState(); }
+      };
+      es.onerror = () => { if (es) es.close(); };
+      if (polls) clearInterval(polls);
+      polls = setInterval(pollState, 900);
+    };
+
+    $('reset').onclick = () => {
+      clearFeed();
+      resultEl.textContent = 'No result yet. Run a task to see the verified outcome.';
+      resultTag.textContent = 'not run';
+      resultTag.className = 'tag idle';
+      factsEl.textContent = '{}';
+      setStatus('idle');
+      $('run').disabled = false;
+      $('runmeta').textContent = '';
+      hideOverlay();
+      $('goal').value = 'Find the latest invoice from Acme Corp and enter it into the finance system.';
+    };
+
+    $('okans').onclick = async () => {
+      if (!tid) return;
+      const answer = $('modalin').value;
+      hideOverlay();
+      await fetch('/answers/' + tid, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answer })
+      });
+    };
+
+    $('yes').onclick = async () => {
+      if (!tid) return;
+      hideOverlay();
+      await fetch('/approvals/' + tid, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approved: true })
+      });
+    };
+
+    $('no').onclick = async () => {
+      if (!tid) return;
+      hideOverlay();
+      await fetch('/approvals/' + tid, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approved: false })
+      });
+    };
+  </script>
+</body>
+</html>

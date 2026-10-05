@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Invoice {{ row.number }}{% endblock %}
+{% block body %}
+<p><a href="/invoices">Back to invoices</a></p>
+<h1>Invoice detail</h1>
+<p>Invoice Number: {{ row.number }}</p>
+<p>Vendor: {{ row.vendor }}</p>
+<p>Date: {{ row.date }}</p>
+<p>Amount: {{ format_inr(row.amount) }}</p>
+<p>Due Date: {{ row.due_date }}</p>
+<p>Status: {{ row.status }}</p>
+{% endblock %}
