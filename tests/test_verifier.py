@@ -74,6 +74,7 @@ class TestVerifier(unittest.TestCase):
 
     def test_fail_duplicates(self):
         conn = sqlite3.connect(FINANCE_DB)
+        conn.execute("DROP INDEX idx_records_invoice_number")
         for _ in range(2):
             conn.execute(
                 "INSERT INTO records (vendor, invoice_number, amount, due_date, status) VALUES (?,?,?,?,?)",

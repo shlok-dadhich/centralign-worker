@@ -118,10 +118,8 @@ finance :3002
 `events.jsonl`, screenshots, and `trace.zip`. The model only emits one validated tool call per turn;
 Python executes it.
 
-For a complete component-by-component explanation, end-to-end sequence diagrams, file map,
-approval/retry behavior, and current verification evidence, see [`explain.md`](explain.md).
-The application-form response draft is in the workspace root at [`../SUBMIT.txt`](../SUBMIT.txt);
-replace its personal-info placeholders and add the repository/video links before submitting.
+The detailed architecture guide and application-form draft are kept as local workspace documents
+and are intentionally not included in this repository.
 
 ## Design decisions
 
@@ -130,6 +128,7 @@ replace its personal-info placeholders and add the repository/video links before
 - **Label-based transient-save retry:** after that configured error, the worker re-observes and retries the same control by its observed label (`browser.click_by_label`), so regenerated element IDs do not force a stale-ID selector. Other stale-ID errors are classified for model-guided recovery.
 - **External explicit state:** `WorkerState` is a dataclass written to disk every step so a failure is inspectable without replaying the model.
 - **Deterministic verifier:** `finish()` is a claim. Ground truth is portal SQLite (latest invoice by date for the resolved vendor) vs finance SQLite. Ambiguous or missing vendor is confirmed by a human before browser actions, and the verifier only accepts a vendor fact found in that recorded answer. No LLM in the check.
+- **Idempotent finance writes:** Invoice numbers are unique in the demo finance database. Repeated submits update the existing record instead of creating duplicates; startup safely consolidates legacy duplicates only when their invoice details agree, and preserves a paid status.
 - **Policy in code:** Financial clicks are blocked until `request_approval` returns approve. Retry cap is per `tool+args` signature in Python, not a prompt suggestion.
 - **Generic tools:** Agent code has no vendor names or invoice CSS selectors. Task knowledge lives in mock apps, seed data, and the verifier lookup.
 - **Lower-variance runs:** the model is called with `temperature=0` by default. This reduces sampling
@@ -164,7 +163,7 @@ See `docs/decisions.md`.
 
 Formerly listed limitations, now solved with real mechanisms (no scripted shortcuts):
 
-- **Wrong saved record is recoverable.** The finance app has an `/records/{id}/edit` page and the agent is told (RULE 14 / `VERIFY_FEEDBACK`) to fix a wrong record in place instead of creating a duplicate — which the verifier would reject anyway.
+- **Wrong saved record is recoverable.** The finance app has an `/records/{id}/edit` page and the agent is told (RULE 14 / `VERIFY_FEEDBACK`) to fix a wrong record in place. The finance app also enforces one record per invoice number, so retries update the existing record rather than introducing duplicates.
 - **Transient-save retry is label-collision-safe.** `browser.click_by_label(label, tag, role)` re-finds the submit control by label *and* prefers the same tag/role, so a re-rendered page with two same-labelled controls picks the same kind of control.
 - **Approvals can't leak through `ask_user`.** Any `ask_user` whose text classifies as financial/irreversible is blocked by policy; the model is instructed to use `request_approval` instead. After a decision, re-asks are bounded and the loop terminates.
 

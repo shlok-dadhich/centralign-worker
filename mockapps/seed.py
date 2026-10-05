@@ -66,32 +66,96 @@ def seed_portal(reset: bool = True) -> None:
 
 def seed_finance(reset: bool = True) -> None:
     conn = _connect(FINANCE_DB)
-    if reset:
-        conn.execute("DROP TABLE IF EXISTS records")
-        conn.execute("DROP TABLE IF EXISTS settings")
-    conn.execute(
-        """CREATE TABLE IF NOT EXISTS records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            vendor TEXT NOT NULL,
-            invoice_number TEXT NOT NULL,
-            amount INTEGER NOT NULL,
-            due_date TEXT NOT NULL,
-            status TEXT NOT NULL
-        )"""
-    )
-    conn.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
-    defaults = {
-        "fail_first_save": "0",
-        "rename_button": "0",
-        "fail_first_save_used": "0",
-    }
-    for k, v in defaults.items():
-        conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
-    if reset:
+    try:
+        if reset:
+            conn.execute("DROP TABLE IF EXISTS records")
+            conn.execute("DROP TABLE IF EXISTS settings")
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                vendor TEXT NOT NULL,
+                invoice_number TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                due_date TEXT NOT NULL,
+                status TEXT NOT NULL
+            )"""
+        )
+        conn.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        defaults = {
+            "fail_first_save": "0",
+            "rename_button": "0",
+            "fail_first_save_used": "0",
+        }
         for k, v in defaults.items():
-            conn.execute("UPDATE settings SET value=? WHERE key=?", (v, k))
-    conn.commit()
-    conn.close()
+            conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
+        if reset:
+            for k, v in defaults.items():
+                conn.execute("UPDATE settings SET value=? WHERE key=?", (v, k))
+        _deduplicate_finance_records(conn)
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_records_invoice_number ON records(invoice_number)"
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def _deduplicate_finance_records(conn: sqlite3.Connection) -> None:
+    duplicates = conn.execute(
+        """SELECT invoice_number FROM records
+           GROUP BY invoice_number HAVING COUNT(*) > 1"""
+    ).fetchall()
+    for duplicate in duplicates:
+        invoice_number = duplicate["invoice_number"]
+        rows = conn.execute(
+            """SELECT id, vendor, amount, due_date, status FROM records
+               WHERE invoice_number=?
+               ORDER BY CASE WHEN status='PAID' THEN 0 ELSE 1 END, id""",
+            (invoice_number,),
+        ).fetchall()
+        details = {(row["vendor"], row["amount"], row["due_date"]) for row in rows}
+        if len(details) != 1:
+            raise RuntimeError(
+                f"Cannot safely merge conflicting finance records for invoice {invoice_number!r}"
+            )
+
+        keep_id = rows[0]["id"]
+        keep_status = "PAID" if any(row["status"] == "PAID" for row in rows) else rows[0]["status"]
+        conn.execute("UPDATE records SET status=? WHERE id=?", (keep_status, keep_id))
+        conn.execute(
+            "DELETE FROM records WHERE invoice_number=? AND id<>?",
+            (invoice_number, keep_id),
+        )
+
+
+def save_finance_record(
+    conn: sqlite3.Connection,
+    vendor: str,
+    invoice_number: str,
+    amount: int,
+    due_date: str,
+) -> int:
+    """Create or correct an invoice record without duplicating it on retries."""
+    invoice_number = invoice_number.strip()
+    if not invoice_number:
+        raise ValueError("invoice number is required")
+
+    conn.execute(
+        """INSERT INTO records (vendor, invoice_number, amount, due_date, status)
+           VALUES (?, ?, ?, ?, 'UNPAID')
+           ON CONFLICT(invoice_number) DO UPDATE SET
+               vendor=excluded.vendor,
+               amount=excluded.amount,
+               due_date=excluded.due_date""",
+        (vendor.strip(), invoice_number, amount, due_date.strip()),
+    )
+    row = conn.execute(
+        "SELECT id FROM records WHERE invoice_number=?", (invoice_number,)
+    ).fetchone()
+    return int(row["id"])
 
 
 def reset_all() -> None:

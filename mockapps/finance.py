@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from mockapps.paths import FINANCE_DB, ROOT
-from mockapps.seed import format_inr, seed_finance
+from mockapps.seed import format_inr, save_finance_record, seed_finance
 
 seed_finance(reset=False)
 
@@ -151,11 +151,25 @@ def record_create(
                 "due_date": due_date,
             },
         )
-    cur = conn.execute(
-        "INSERT INTO records (vendor, invoice_number, amount, due_date, status) VALUES (?,?,?,?,?)",
-        (vendor.strip(), invoice_number.strip(), amt, due_date.strip(), "UNPAID"),
+    if not vendor.strip() or not invoice_number.strip() or not due_date.strip():
+        conn.close()
+        return templates.TemplateResponse(
+            request,
+            "record_new.html",
+            {
+                "request": request,
+                "error": "Vendor, invoice number, and due date are required.",
+                "submit_label": submit_label,
+                "vendor": vendor,
+                "invoice_number": invoice_number,
+                "amount": amount,
+                "due_date": due_date,
+            },
+            status_code=400,
+        )
+    new_id = save_finance_record(
+        conn, vendor, invoice_number, amt, due_date
     )
-    new_id = cur.lastrowid
     conn.commit()
     conn.close()
     return RedirectResponse(f"/records/{new_id}", status_code=303)
@@ -218,6 +232,22 @@ def record_edit(
             "record_edit.html",
             {"request": request, "row": row, "error": "Invalid data: amount must be an integer."},
             status_code=400,
+        )
+    duplicate = conn.execute(
+        "SELECT id FROM records WHERE invoice_number=? AND id<>?",
+        (invoice_number.strip(), record_id),
+    ).fetchone()
+    if duplicate:
+        conn.close()
+        return templates.TemplateResponse(
+            request,
+            "record_edit.html",
+            {
+                "request": request,
+                "row": row,
+                "error": "Another finance record already uses this invoice number.",
+            },
+            status_code=409,
         )
     conn.execute(
         "UPDATE records SET vendor=?, invoice_number=?, amount=?, due_date=? WHERE id=?",
